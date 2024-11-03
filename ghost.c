@@ -133,46 +133,48 @@ Function - *threadGhost
 Purpose - starts the ghost's thread 
 out - gArgs (Void* )  
 */
-void *threadGhost(void *gArgs) { 
-    GhostType *ghost = (GhostType *)gArgs; 
-    while (ghost->boredemTimer < BOREDOM_MAX) { 
-    //lock to avoid conflicts
-    sem_wait(&ghost->room->Mutex); 
-    // Lock the room mutex at the start 
-    int hunterInRoom = hunterPresent(ghost->room); 
-    if (hunterInRoom == C_TRUE) { 
-        // If a hunter is in the room 
-        ghost->boredemTimer = 0; 
-        int action = randInt(0, 2); 
-        if (action == 0) { 
-            // Ghost chooses to leave evidence 
-            addGhostEvidence(ghost->evidence, ghost->room->evidences, ghost); 
-        } 
-        //unlock to allow others to act
-        sem_post(&ghost->room->Mutex); 
-        // Unlock the room mutex 
-        } else { 
-            // If no hunter is in the room 
-            ghost->boredemTimer++; 
-            int action = randInt(0, 3); 
-            if (action == 0) { 
-                //unlock to allow others to act
-                sem_post(&ghost->room->Mutex); 
-                moveGhost(ghost); 
-                } else if (action == 1) { 
-                    addGhostEvidence(ghost->evidence, ghost->room->evidences, ghost); 
-                    //unlock to allow others to act
-                    sem_post(&ghost->room->Mutex); 
-                } else { 
-                    sem_post(&ghost->room->Mutex); 
-                } 
-        } 
-        if (ghost->boredemTimer >= BOREDOM_MAX) { 
-            l_ghostExit(LOG_BORED); 
+void *threadGhost(void *gArgs) {
+    GhostType *ghost = (GhostType *)gArgs;
+   
+    while (ghost->boredemTimer < BOREDOM_MAX) {
+        //lock to avoid conflicts
+        sem_wait(&ghost->room->Mutex);
+
+        int hunterInRoom = hunterPresent(ghost->room);
+       
+        if (hunterInRoom == C_TRUE) {
+            ghost->boredemTimer = 0;
+            int action = randInt(0, 2);
+           
+            if (action == 0) {
+                addGhostEvidence(ghost->evidence, ghost->room->evidences, ghost);
+            }
             //unlock to allow others to act
-            sem_post(&ghost->room->Mutex); 
-            pthread_exit(NULL); 
-        } 
-    } 
-    pthread_exit(NULL); 
+            sem_post(&ghost->room->Mutex);
+
+        } else {
+            ghost->boredemTimer++;
+            int action = randInt(0, 3);
+
+            if (action == 0) {
+                //unlock to allow others to act
+                sem_post(&ghost->room->Mutex);
+                moveGhost(ghost);
+            } else if (action == 1) {
+                addGhostEvidence(ghost->evidence, ghost->room->evidences, ghost);
+                //unlock to allow others to act
+                sem_post(&ghost->room->Mutex);
+            } else {
+                //unlock to allow others to act
+                sem_post(&ghost->room->Mutex);
+            }
+        }
+
+        if (ghost->boredemTimer >= BOREDOM_MAX) {
+            l_ghostExit(LOG_BORED);
+            pthread_exit(NULL);
+        }
+    }
+   
+    pthread_exit(NULL);
 }

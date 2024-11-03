@@ -259,56 +259,64 @@ Purpose - starts the hunter thread
 in/out - hArgs (Void* )  
 */
 void *threadHunter(void *hArgs) {
-HunterType *hunter = (HunterType *)hArgs; 
-while ((hunter->boredemTimer < BOREDOM_MAX) && (hunter->fear < FEAR_MAX)) { 
-    sem_wait(&hunter->room->Mutex); 
-    //lock to avoid conflicts
-    int ghostInRoom = ghostPresent(hunter->room); 
-    if (ghostInRoom == C_TRUE) { 
-        hunter->fear++; hunter->boredemTimer = 0; 
-        int action = randInt(0, 3); 
-        if (action == 0) {
-            hunterCollect(hunter, hunter->room); 
-        } else if (action == 1) { 
-            moveHunter(hunter); 
-        } else { 
-            int endSimulation = reviewHunterEvidence(hunter); 
-            if (endSimulation == C_TRUE) { 
-                sem_post(&hunter->room->Mutex); 
-                l_hunterExit(hunter->name, LOG_EVIDENCE); 
-                pthread_exit(NULL); 
-                } 
-            } 
-        } else { 
-            hunter->boredemTimer++; 
-            int action = randInt(0, 3); 
-            if (action == 0) { 
-                hunterCollect(hunter, hunter->room); 
-            } else if (action == 1) { 
-                moveHunter(hunter); 
-            } else { 
-                int endSimulation = reviewHunterEvidence(hunter); 
-            if (endSimulation == C_TRUE) { 
-                sem_post(&hunter->room->Mutex); 
-                l_hunterExit(hunter->name, LOG_EVIDENCE); 
-                pthread_exit(NULL); 
-            } 
-        } 
-    } 
-    if (hunter->fear >= FEAR_MAX) { 
-        l_hunterExit(hunter->name, LOG_FEAR); 
+    HunterType *hunter = (HunterType *)hArgs;
+
+    while ((hunter->boredemTimer < BOREDOM_MAX) && (hunter->fear < FEAR_MAX)) {
+        //lock to avoid conflicts
+        sem_wait(&hunter->room->Mutex);
+        int ghostInRoom = ghostPresent(hunter->room);
+
+        if (ghostInRoom == C_TRUE) {
+            hunter->fear++;
+            hunter->boredemTimer = 0;
+            int action = randInt(0, 3);
+
+            if (action == 0) {
+                hunterCollect(hunter, hunter->room);
+            } else if (action == 1) {
+                moveHunter(hunter);
+            } else {
+                if (reviewHunterEvidence(hunter) == C_TRUE) {
+                    //unlock to allow others to act
+                    sem_post(&hunter->room->Mutex);
+                    l_hunterExit(hunter->name, LOG_EVIDENCE);
+                    pthread_exit(NULL);
+                }
+            }
+
+        } else {
+            hunter->boredemTimer++;
+            int action = randInt(0, 3);
+
+            if (action == 0) {
+                hunterCollect(hunter, hunter->room);
+            } else if (action == 1) {
+                moveHunter(hunter);
+            } else {
+                if (reviewHunterEvidence(hunter) == C_TRUE) {
+                    //unlock to allow others to act
+                    sem_post(&hunter->room->Mutex);
+                    l_hunterExit(hunter->name, LOG_EVIDENCE);
+                    pthread_exit(NULL);
+                }
+            }
+        }
+
+        if (hunter->fear >= FEAR_MAX) {
+            l_hunterExit(hunter->name, LOG_FEAR);
+            //unlock to allow others to act
+            sem_post(&hunter->room->Mutex);
+            pthread_exit(NULL);
+        } else if (hunter->boredemTimer >= BOREDOM_MAX) {
+            l_hunterExit(hunter->name, LOG_BORED);
+            //unlock to allow others to act
+            sem_post(&hunter->room->Mutex);
+            pthread_exit(NULL);
+        }
         //unlock to allow others to act
-        sem_post(&hunter->room->Mutex); 
-        pthread_exit(NULL); 
-    } else if (hunter->boredemTimer >= BOREDOM_MAX) { 
-        l_hunterExit(hunter->name, LOG_BORED); 
-        //unlock to allow others to act
-        sem_post(&hunter->room->Mutex); 
-        pthread_exit(NULL); 
-    } 
-    //unlock to allow others to act
-    sem_post(&hunter->room->Mutex); 
-    } 
+        sem_post(&hunter->room->Mutex);
+    }
+
     pthread_exit(NULL);
 }
 
