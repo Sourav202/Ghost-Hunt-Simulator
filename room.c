@@ -28,13 +28,13 @@ RoomType* createRoom(char *name) {
     room->rooms->tail = NULL;
 
     room->evidences = (EvidenceListType*)malloc(sizeof(EvidenceListType));
-    room->evidences->head = NULL;
-    room->evidences->tail = NULL;
-    
+    initEvidenceList(room->evidences);
+
     room->hunters = (HunterListType*)malloc(sizeof(HunterListType)); 
     room->hunters->head = NULL;
     room->hunters->tail = NULL;
 
+    sem_init(&room->Mutex, 0, 1);
     return room;
 }
 
@@ -123,6 +123,7 @@ void cleanupRoomData(RoomType *room) {
         cleanupRoomList(room->rooms);
         free(room->rooms);
     }
+    sem_destroy(&room->Mutex);
     free(room);
 }
 
