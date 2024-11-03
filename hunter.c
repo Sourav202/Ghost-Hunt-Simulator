@@ -171,7 +171,12 @@ Purpose - adds evidence to the house evidence list (rejects duplicates)
 in/out - hunter (HunterType *), room (RoomType *) 
 */
 void hunterCollect(HunterType *hunter, RoomType *room) {
+    //lock to avoid conflicts
+    sem_wait(&room->Mutex);
+
     if (room->evidences->head == NULL) {
+        //unlock to allow others to act
+        sem_post(&room->Mutex);
         return;
     }
     ENodeType *currNode = room->evidences->head;
@@ -184,6 +189,8 @@ void hunterCollect(HunterType *hunter, RoomType *room) {
         }
         currNode = currNode->nextNode;
     }
+    //unlock to allow others to act
+    sem_post(&room->Mutex);
 }
 
 /*
@@ -204,8 +211,17 @@ void moveHunter(HunterType *hunter) {
         currNode = currNode->nextNode;
     }
     RoomType *newRoom = currNode->currRoomObj;
-    hunter->room = newRoom;
+
+    //lock to avoid conflicts
+    sem_wait(&hunter->room->Mutex);
+    sem_wait(&newRoom->Mutex);
+
+    setHunterRoom(hunter, newRoom);
     l_hunterMove(hunter->name, hunter->room->name);
+
+    //unlock to allow others to act
+    sem_post(&hunter->room->Mutex);
+    sem_post(&newRoom->Mutex);
 }
 
 /*
@@ -215,18 +231,24 @@ in - hunter (HunterType *)
 return -  int C_TRUE/C_FALSE
 */
 int reviewHunterEvidence(HunterType *hunter) {
-    if (hunter->evidenceList == NULL) {
-        return C_FALSE;
-    }
+    //lock to avoid conflicts
+    sem_wait(&hunter->evidenceList->Mutex);
+
     int numOfEvidences = 0;
     ENodeType *currNode = hunter->evidenceList->head;
     while (currNode != NULL) {
         numOfEvidences++;
         currNode = currNode->nextNode;
     }
+
+    //unlock to allow others to act
+    sem_post(&hunter->evidenceList->Mutex);
+
     if (numOfEvidences >= 3) {
+        l_hunterReview(hunter->name, LOG_SUFFICIENT);
         return C_TRUE;
     } else {
+        l_hunterReview(hunter->name, LOG_INSUFFICIENT);
         return C_FALSE;
     }
 }
@@ -237,76 +259,56 @@ Purpose - starts the hunter thread
 in/out - hArgs (Void* )  
 */
 void *threadHunter(void *hArgs) {
-    HunterType *hunter = (HunterType *)hArgs;
-    //HouseType *house = hunter->house;
-    while ((hunter->boredemTimer < BOREDOM_MAX) && (hunter->fear < FEAR_MAX)) {
-        sem_wait(&hunter->room->Mutex);
-        int ghostInRoom = ghostPresent(hunter->room);
-        //there is a ghost in the room
-        if (ghostInRoom == C_TRUE) {
-            hunter->fear++;
-            hunter->boredemTimer = 0;
-            int x  = randInt(0, 3);
-        //hunter chooses to collect evidence while ghost is in room
-        if (x == 0) {
-            hunterCollect(hunter, hunter->room);
-        //hunter chooses to move while ghost is in room
-        }
-        else if (x == 1) {
-            moveHunter(hunter);
-        }
-        //hunter chooses to review evidence
-        else {
-            int endSimuation = reviewHunterEvidence(hunter);
-            //enough evidence has been collected to identify the ghost
-            if (endSimuation == C_TRUE) {
-                pthread_exit(NULL);
-            } 
-            //there is still not enough evidence to identify the ghost
-            else {
-                continue;
-                }
-            }
-            sem_wait(&hunter->room->Mutex);
-        }
-        //there is no ghost in the room
-        else {
-            hunter->boredemTimer++;
-            int x  = randInt(0, 3);
-            //hunter chooses to collect evidence while ghost is NOT in room
-            if (x == 0 ) {
-                hunterCollect(hunter, hunter->room);
-            }
-            //hunter chooses to move while ghost is NOT in room
-            else if (x == 1) {
-                moveHunter(hunter);
-            }
-            //hunter chooses to review evidence
-            else {
-                int endSimuation = reviewHunterEvidence(hunter);
-                //enough evidence has been collected to identify the ghost
-                if (endSimuation == C_TRUE) {
-                    l_hunterReview(hunter->name, LOG_SUFFICIENT);
-                    l_hunterExit(hunter->name, LOG_EVIDENCE);
-                    pthread_exit(NULL);
+HunterType *hunter = (HunterType *)hArgs; 
+while ((hunter->boredemTimer < BOREDOM_MAX) && (hunter->fear < FEAR_MAX)) { 
+    sem_wait(&hunter->room->Mutex); 
+    //lock to avoid conflicts
+    int ghostInRoom = ghostPresent(hunter->room); 
+    if (ghostInRoom == C_TRUE) { 
+        hunter->fear++; hunter->boredemTimer = 0; 
+        int action = randInt(0, 3); 
+        if (action == 0) {
+            hunterCollect(hunter, hunter->room); 
+        } else if (action == 1) { 
+            moveHunter(hunter); 
+        } else { 
+            int endSimulation = reviewHunterEvidence(hunter); 
+            if (endSimulation == C_TRUE) { 
+                sem_post(&hunter->room->Mutex); 
+                l_hunterExit(hunter->name, LOG_EVIDENCE); 
+                pthread_exit(NULL); 
                 } 
-                //there is still not enough evidence to identify the ghost
-                else {
-                    l_hunterReview(hunter->name, LOG_INSUFFICIENT);
-                    continue;
-                    }
-            }
-        }
-        if (hunter->fear >= FEAR_MAX) {
-            l_hunterExit(hunter->name, LOG_FEAR);
-            pthread_exit(NULL);
-        }
-        else if (hunter->boredemTimer >= BOREDOM_MAX) {
-            l_hunterExit(hunter->name, LOG_BORED);
-            pthread_exit(NULL);
-        }
-        sem_post(&hunter->room->Mutex);
-    }
+            } 
+        } else { 
+            hunter->boredemTimer++; 
+            int action = randInt(0, 3); 
+            if (action == 0) { 
+                hunterCollect(hunter, hunter->room); 
+            } else if (action == 1) { 
+                moveHunter(hunter); 
+            } else { 
+                int endSimulation = reviewHunterEvidence(hunter); 
+            if (endSimulation == C_TRUE) { 
+                sem_post(&hunter->room->Mutex); 
+                l_hunterExit(hunter->name, LOG_EVIDENCE); 
+                pthread_exit(NULL); 
+            } 
+        } 
+    } 
+    if (hunter->fear >= FEAR_MAX) { 
+        l_hunterExit(hunter->name, LOG_FEAR); 
+        //unlock to allow others to act
+        sem_post(&hunter->room->Mutex); 
+        pthread_exit(NULL); 
+    } else if (hunter->boredemTimer >= BOREDOM_MAX) { 
+        l_hunterExit(hunter->name, LOG_BORED); 
+        //unlock to allow others to act
+        sem_post(&hunter->room->Mutex); 
+        pthread_exit(NULL); 
+    } 
+    //unlock to allow others to act
+    sem_post(&hunter->room->Mutex); 
+    } 
     pthread_exit(NULL);
 }
 

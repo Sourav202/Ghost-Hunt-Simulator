@@ -7,6 +7,9 @@ out - list (EvidenceListType *)
 void initEvidenceList(EvidenceListType *list){
     list->head = NULL;
     list->tail = NULL;
+
+    //init semaphore
+    sem_init(&list->Mutex, 0, 1);
 }
 
 /*
@@ -35,6 +38,9 @@ Purpose - frees a room list
 in/out - list (EvidenceListType *)
 */ 
 void cleanupEvidenceList(EvidenceListType *list) {
+    //lock to avoid conflicts
+    sem_wait(&list->Mutex);
+
     //begin at the head
     ENodeType *currNode = list->head;
     //traverse list until last node is found
@@ -50,6 +56,11 @@ void cleanupEvidenceList(EvidenceListType *list) {
     //set list to NULL
     list->head = NULL;
     list->tail = NULL;
+
+    //unlock to allow others to act
+    sem_post(&list->Mutex);
+    //destroy mutex
+    sem_destroy(&list->Mutex);
 }
 
 /*
@@ -67,6 +78,9 @@ void addRoomEvidence(EvidenceListType *roomEvidence, EvidenceType ghostEvidence)
         }
         currEvidence = currEvidence->nextNode;
     }*/
+    //lock to avoid conflicts
+    sem_wait(&roomEvidence->Mutex);
+
     ENodeType *newNode = (ENodeType *)malloc(sizeof(ENodeType));
     newNode->evidenceObj = (EvidenceType *)malloc(sizeof(EvidenceType));
     *(newNode->evidenceObj) = ghostEvidence;
@@ -78,4 +92,7 @@ void addRoomEvidence(EvidenceListType *roomEvidence, EvidenceType ghostEvidence)
         roomEvidence->tail->nextNode = newNode;
     }
     roomEvidence->tail = newNode;
+
+    //unlock to allow others to act
+    sem_post(&roomEvidence->Mutex);
 }

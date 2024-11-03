@@ -34,25 +34,24 @@ int main()
     //add the ghost for the simulation
     GhostType ghost;
     initGhost(&house, &ghost);
+    // Initialize hunters and add them to the house's hunter list 
+    HunterType *hunters[NUM_HUNTERS]; 
+    for (int i = 0; i < NUM_HUNTERS; i++) { 
+        hunters[i] = initHunter(namesOfHunters[i], &equipment[i], house.rooms.head->currRoomObj, &house.sharedEvidence, &house); 
+        addHunter(hunters[i], &house); 
+    } 
 
-    //initiates and places all 4 hunters inside the starting room
+    pthread_create(&ghost.Gthread, NULL, threadGhost, (void *)&ghost); 
     for (int i = 0; i < NUM_HUNTERS; i++) {
-        HunterType *hunter = initHunter(namesOfHunters[i], equipment + i, house.rooms.head->currRoomObj, &(house.sharedEvidence), &house);
-        addHunter(hunter, &house);
+        pthread_create(&hunters[i]->Hthread, NULL, threadHunter, (void *)hunters[i]); 
+    } 
+    
+    pthread_join(ghost.Gthread, NULL); 
+    for (int i = 0; i < NUM_HUNTERS; i++) { 
+        pthread_join(hunters[i]->Hthread, NULL); 
     }
-    //threading and semaphones
-    /*
-    sem_init(&ghost.room->Mutex, 0, 1);
-    pthread_create(&ghost.Gthread, NULL, threadGhost, (void *)&ghost);
-    pthread_join(ghost.Gthread, NULL);
-    for (int i =0; i < NUM_HUNTERS; i++) {
-        HNodeType *currNode = house.hunters.head;
-        pthread_create(&currNode->Hunter->Hthread, NULL, threadHunter, (void *)currNode->Hunter);
-        pthread_join(currNode->Hunter->Hthread, NULL);
-        currNode = currNode->nextNode;
-    }
-    */
     //prints room connections, list, hunters and ghost
+    /*    
     RNodeType *currNode = house.rooms.head;
     while (currNode != NULL) {
         RoomType *currRoom = currNode->currRoomObj;
@@ -62,6 +61,7 @@ int main()
     printRoomList(&house.rooms);
     printHunterList(&house.hunters);
     printGhost(&ghost);
+    */
 
     cleanupHouse(&house);
     return 0;

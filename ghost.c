@@ -86,8 +86,13 @@ out - roomEvidence (EvidenceListType)
 void addGhostEvidence(EvidenceType ghostEvidence[], EvidenceListType *roomEvidence, GhostType *ghost) {
     int ghostDrop = randInt(0, 2);
 
+    //lock to avoid conflicts
+    sem_wait(&ghost->room->Mutex);
     addRoomEvidence(roomEvidence, ghostEvidence[ghostDrop]);
+
+    //unlock to allow others to act
     l_ghostEvidence(ghostEvidence[ghostDrop], ghost->room->name);
+    sem_post(&ghost->room->Mutex);
 }
 
 /*
@@ -108,8 +113,19 @@ void moveGhost(GhostType *ghost) {
         currNode = currNode->nextNode;
     }
     RoomType *newRoom = currNode->currRoomObj;
+
+    //lock to avoid conflicts
+    sem_wait(&ghost->room->Mutex);
+    sem_wait(&newRoom->Mutex);
+
+    ghost->room->ghost = NULL;
     ghost->room = newRoom;
+    ghost->room->ghost = ghost;
     l_ghostMove(ghost->room->name);
+
+    //unlock to allow others to act
+    sem_post(&ghost->room->Mutex);
+    sem_post(&newRoom->Mutex);
 }
 
 /*
@@ -117,45 +133,46 @@ Function - *threadGhost
 Purpose - starts the ghost's thread 
 out - gArgs (Void* )  
 */
-void *threadGhost(void *gArgs) {
-    GhostType *ghost = (GhostType *)gArgs;
-    //HouseType *house = ghost->house;
-    while (ghost->boredemTimer < BOREDOM_MAX) {
-        sem_wait(&ghost->room->Mutex);
-        int hunterInRoom = hunterPresent(ghost->room);
-        //there is a hunter in the room
-        if (hunterInRoom == C_TRUE) {
-            ghost->boredemTimer = 0;
-            int x  = randInt(0, 2);
-            //ghost chooses to leave evidence while hunter is in room
-            if (x == 0) {
-                addGhostEvidence(ghost->evidence, ghost->room->evidences, ghost);
-            }
-            //ghost chooses to do nothing while hunter is in room
-            else {}
-            sem_post(&ghost->room->Mutex);
-        }
-    //there is no hunter in the room
-        else {
-            ghost->boredemTimer++;
-            int x  = randInt(0, 3);
-            //ghost chooses to move to an adjacent room
-            if (x == 0) {
-                moveGhost(ghost);
-            }
-            //ghost chooses to leave evidence while hunter NOT is in room
-            else if (x == 1) {
-                addGhostEvidence(ghost->evidence, ghost->room->evidences, ghost);
-            }
-            //ghost chooses to do nothing while hunter is NOT in room 
-            else {}
-            
-            if (ghost->boredemTimer >= BOREDOM_MAX) {
-                l_ghostExit(LOG_BORED);
-                pthread_exit(NULL);
-            }
-            sem_post(&ghost->room->Mutex);
-        }
-    }
-    pthread_exit(NULL);
+void *threadGhost(void *gArgs) { 
+    GhostType *ghost = (GhostType *)gArgs; 
+    while (ghost->boredemTimer < BOREDOM_MAX) { 
+    //lock to avoid conflicts
+    sem_wait(&ghost->room->Mutex); 
+    // Lock the room mutex at the start 
+    int hunterInRoom = hunterPresent(ghost->room); 
+    if (hunterInRoom == C_TRUE) { 
+        // If a hunter is in the room 
+        ghost->boredemTimer = 0; 
+        int action = randInt(0, 2); 
+        if (action == 0) { 
+            // Ghost chooses to leave evidence 
+            addGhostEvidence(ghost->evidence, ghost->room->evidences, ghost); 
+        } 
+        //unlock to allow others to act
+        sem_post(&ghost->room->Mutex); 
+        // Unlock the room mutex 
+        } else { 
+            // If no hunter is in the room 
+            ghost->boredemTimer++; 
+            int action = randInt(0, 3); 
+            if (action == 0) { 
+                //unlock to allow others to act
+                sem_post(&ghost->room->Mutex); 
+                moveGhost(ghost); 
+                } else if (action == 1) { 
+                    addGhostEvidence(ghost->evidence, ghost->room->evidences, ghost); 
+                    //unlock to allow others to act
+                    sem_post(&ghost->room->Mutex); 
+                } else { 
+                    sem_post(&ghost->room->Mutex); 
+                } 
+        } 
+        if (ghost->boredemTimer >= BOREDOM_MAX) { 
+            l_ghostExit(LOG_BORED); 
+            //unlock to allow others to act
+            sem_post(&ghost->room->Mutex); 
+            pthread_exit(NULL); 
+        } 
+    } 
+    pthread_exit(NULL); 
 }

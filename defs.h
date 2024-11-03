@@ -116,6 +116,7 @@ struct NodeRoom {
 struct EvidenceList {
   ENodeType  *head;
   ENodeType  *tail;
+  sem_t Mutex;
 };
 struct NodeEvidence {
   EvidenceType  *evidenceObj;
