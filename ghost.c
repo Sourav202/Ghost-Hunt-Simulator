@@ -135,46 +135,43 @@ out - gArgs (Void* )
 */
 void *threadGhost(void *gArgs) {
     GhostType *ghost = (GhostType *)gArgs;
-   
-    while (ghost->boredemTimer < BOREDOM_MAX) {
-        //lock to avoid conflicts
-        sem_wait(&ghost->room->Mutex);
+    printf("Starting ghost thread in room %s\n", ghost->room->name);
 
+    while (ghost->boredemTimer < BOREDOM_MAX) {
+        sem_wait(&ghost->room->Mutex);
         int hunterInRoom = hunterPresent(ghost->room);
-       
+        printf("Ghost checking room %s: Hunter in room? %d\n", ghost->room->name, hunterInRoom);
+
         if (hunterInRoom == C_TRUE) {
             ghost->boredemTimer = 0;
-            int action = randInt(0, 2);
-           
+            int action = randInt(0, 1);
+            printf("Ghost chose action %d with hunters present\n", action);
+
             if (action == 0) {
                 addGhostEvidence(ghost->evidence, ghost->room->evidences, ghost);
             }
-            //unlock to allow others to act
-            sem_post(&ghost->room->Mutex);
-
+            sem_post(&ghost->room->Mutex); // release lock and proceed to the next iteration
         } else {
             ghost->boredemTimer++;
-            int action = randInt(0, 3);
+            int action = randInt(0, 2);
+            printf("Ghost boredom incremented to %d, chose action %d without hunters present\n", ghost->boredemTimer, action);
 
             if (action == 0) {
-                //unlock to allow others to act
-                sem_post(&ghost->room->Mutex);
+                sem_post(&ghost->room->Mutex); // release the lock before moving
                 moveGhost(ghost);
             } else if (action == 1) {
                 addGhostEvidence(ghost->evidence, ghost->room->evidences, ghost);
-                //unlock to allow others to act
-                sem_post(&ghost->room->Mutex);
+                sem_post(&ghost->room->Mutex); // release lock after leaving evidence
             } else {
-                //unlock to allow others to act
-                sem_post(&ghost->room->Mutex);
+                sem_post(&ghost->room->Mutex); // release lock when doing nothing
             }
         }
 
         if (ghost->boredemTimer >= BOREDOM_MAX) {
+            printf("Ghost exits due to boredom\n");
             l_ghostExit(LOG_BORED);
             pthread_exit(NULL);
         }
     }
-   
     pthread_exit(NULL);
 }
