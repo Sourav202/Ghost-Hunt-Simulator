@@ -44,6 +44,7 @@ void l_ghostInit(enum GhostClass type, char* room);
 void l_ghostMove(char* room);
 void l_ghostEvidence(enum EvidenceType evidence, char* room);
 void l_ghostExit(enum LoggerDetails reason);
+void testSetHunterRoom();
 
 //--all struct definitions--
 typedef   struct House      HouseType;

@@ -37,7 +37,7 @@ int main() {
         hunters[i] = initHunter(namesOfHunters[i], &equipment[i], house.rooms.head->currRoomObj, &house.sharedEvidence, &house);
         addHunter(hunters[i], &house);
     }
-
+    /*
     // Create threads
     pthread_create(&ghost.Gthread, NULL, threadGhost, (void *)&ghost);
     for (int i = 0; i < NUM_HUNTERS; i++) {
@@ -49,9 +49,9 @@ int main() {
     for (int i = 0; i < NUM_HUNTERS; i++) {
         pthread_join(hunters[i]->Hthread, NULL);
     }
-
+    */
     // Print room connections, list, hunters, and ghost for testing purposes
-    /*
+    
     RNodeType *currNode = house.rooms.head;
     while (currNode != NULL) {
         RoomType *currRoom = currNode->currRoomObj;
@@ -62,7 +62,7 @@ int main() {
     printRoomList(&house.rooms);
     printHunterList(&house.hunters);
     printGhost(&ghost);
-    */
+    
 
     cleanupHouse(&house); // Clean up the house structure
     return 0;

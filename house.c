@@ -5,10 +5,8 @@ Purpose - calls to function to free a room/huter/evidence list
 in - h (HouseType *) 
 */
 void initHouse(HouseType *h) {
-
     initHunterList(&h->hunters);
     initEvidenceList(&h->sharedEvidence);
-    sem_init(&h->sharedEvidence.Mutex, 0, 1);
     initRoomList(&h->rooms);
 }
 
