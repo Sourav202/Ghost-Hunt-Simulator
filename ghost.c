@@ -162,20 +162,20 @@ void *threadGhost(void *gArgs) {
             if (action == 0) {
                 addGhostEvidence(ghost->evidence, ghost->room->evidences, ghost);
             }
-            sem_post(&ghost->room->Mutex); // release lock and proceed to the next iteration
+            sem_post(&ghost->room->Mutex); // Release lock and proceed to the next iteration
         } else {
             ghost->boredemTimer++;
             int action = randInt(0, 2);
             printf("Ghost boredom incremented to %d, chose action %d without hunters present\n", ghost->boredemTimer, action);
 
             if (action == 0) {
-                sem_post(&ghost->room->Mutex); // release the lock before moving
+                sem_post(&ghost->room->Mutex); // Release the lock before moving
                 moveGhost(ghost);
             } else if (action == 1) {
                 addGhostEvidence(ghost->evidence, ghost->room->evidences, ghost);
-                sem_post(&ghost->room->Mutex); // release lock after leaving evidence
+                sem_post(&ghost->room->Mutex); // Release lock after leaving evidence
             } else {
-                sem_post(&ghost->room->Mutex); // release lock when doing nothing
+                sem_post(&ghost->room->Mutex); // Release lock when doing nothing
             }
         }
 
