@@ -16,25 +16,26 @@ Purpose - initializes a room
 in - name (char *)
 */
 RoomType* createRoom(char *name) {
-    //init room
-    //printf("created");
     RoomType *room = (RoomType*)malloc(sizeof(RoomType));
     strncpy(room->name, name, MAX_STR - 1);
     room->name[MAX_STR - 1] = '\0';
 
-    //init roomList, evidenceList, and hunterList
     room->rooms = (RoomListType*)malloc(sizeof(RoomListType));
     room->rooms->head = NULL;
     room->rooms->tail = NULL;
 
     room->evidences = (EvidenceListType*)malloc(sizeof(EvidenceListType));
-    initEvidenceList(room->evidences);
+    initEvidenceList(room->evidences);  // Initializes the mutex inside EvidenceList
 
-    room->hunters = (HunterListType*)malloc(sizeof(HunterListType)); 
+    room->hunters = (HunterListType*)malloc(sizeof(HunterListType));
     room->hunters->head = NULL;
     room->hunters->tail = NULL;
 
+    room->ghost = NULL; // Initialize ghost pointer to NULL
+
+    // Initialize the room's mutex
     sem_init(&room->Mutex, 0, 1);
+
     return room;
 }
 

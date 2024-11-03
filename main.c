@@ -1,26 +1,16 @@
 #include "defs.h"
 
 int main() {
-    /*
-    NOTE: to test the program without threading, comment out all
-    sem and pthread calls, and uncomment all the print statements
-    for logging purposes.
-    */
+    srand(time(NULL)); // Initialize the random number generator
 
-    // Initialize the random number generator
-    srand(time(NULL));
-
-    // Create a house instance and add all the rooms/room connections
     HouseType house;
-    initHouse(&house);
-    populateRooms(&house);
+    initHouse(&house); // Initialize house
+    populateRooms(&house); // Populate the house with rooms
 
-    // Add hunters for the simulation
     char namesOfHunters[NUM_HUNTERS][MAX_STR];
     EvidenceType equipment[NUM_HUNTERS];
     int equipmentInput;
 
-    // Get the name and equipment of the hunters
     for (int i = 0; i < NUM_HUNTERS; i++) {
         printf("Please Enter the Hunter Name %d: ", i + 1);
         scanf("%63s", namesOfHunters[i]);
@@ -30,34 +20,38 @@ int main() {
         scanf("%d", &equipmentInput);
         while (getchar() != '\n');
 
-        equipment[i] = (EvidenceType)equipmentInput;
+        // Ensure equipmentInput is valid
+        if (equipmentInput < 0 || equipmentInput >= EV_COUNT) {
+            printf("Invalid equipment choice, defaulting to EMF.\n");
+            equipment[i] = EMF;
+        } else {
+            equipment[i] = (EvidenceType)equipmentInput;
+        }
     }
 
-    // Initialize the ghost
     GhostType ghost;
-    initGhost(&house, &ghost);
+    initGhost(&house, &ghost); // Initialize ghost
 
-    // Initialize and add hunters to the house's hunter list without threads
     HunterType *hunters[NUM_HUNTERS];
     for (int i = 0; i < NUM_HUNTERS; i++) {
         hunters[i] = initHunter(namesOfHunters[i], &equipment[i], house.rooms.head->currRoomObj, &house.sharedEvidence, &house);
         addHunter(hunters[i], &house);
     }
 
-    /*
+    // Create threads
     pthread_create(&ghost.Gthread, NULL, threadGhost, (void *)&ghost);
     for (int i = 0; i < NUM_HUNTERS; i++) {
         pthread_create(&hunters[i]->Hthread, NULL, threadHunter, (void *)hunters[i]);
     }
 
+    // Wait for threads to finish
     pthread_join(ghost.Gthread, NULL);
     for (int i = 0; i < NUM_HUNTERS; i++) {
         pthread_join(hunters[i]->Hthread, NULL);
     }
-    */
 
     // Print room connections, list, hunters, and ghost for testing purposes
-    
+    /*
     RNodeType *currNode = house.rooms.head;
     while (currNode != NULL) {
         RoomType *currRoom = currNode->currRoomObj;
@@ -68,9 +62,8 @@ int main() {
     printRoomList(&house.rooms);
     printHunterList(&house.hunters);
     printGhost(&ghost);
+    */
 
-    // Clean up the house structure
-    cleanupHouse(&house);
-
+    cleanupHouse(&house); // Clean up the house structure
     return 0;
 }

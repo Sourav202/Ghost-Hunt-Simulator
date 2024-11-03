@@ -260,70 +260,86 @@ in/out - hArgs (Void* )
 */
 void *threadHunter(void *hArgs) {
     HunterType *hunter = (HunterType *)hArgs;
+
     printf("Hunter %s entered threadHunter, starting in room %s\n", hunter->name, hunter->room->name);
 
-    while ((hunter->boredemTimer < BOREDOM_MAX) && (hunter->fear < FEAR_MAX)) {
-        sem_wait(&hunter->room->Mutex);
-        int ghostInRoom = ghostPresent(hunter->room);
+    while (hunter->boredemTimer < BOREDOM_MAX && hunter->fear < FEAR_MAX) {
+        sem_wait(&hunter->room->Mutex); // Lock the room mutex
+       
+        int ghostInRoom = ghostPresent(hunter->room); // Check ghost presence
         printf("Hunter %s checking room %s: Ghost in room? %d\n", hunter->name, hunter->room->name, ghostInRoom);
 
         if (ghostInRoom == C_TRUE) {
-            hunter->fear++;
-            hunter->boredemTimer = 0;
+            hunter->fear++; // Increment fear level
+            hunter->boredemTimer = 0; // Reset boredom timer
             printf("Hunter %s encountered ghost! Fear: %d, Boredom reset\n", hunter->name, hunter->fear);
-
+           
+            // Randomly choose an action
             int action = randInt(0, 3);
             printf("Hunter %s chose action %d with ghost present\n", hunter->name, action);
-
-            if (action == 0) {
-                hunterCollect(hunter, hunter->room);
-            } else if (action == 1) {
-                moveHunter(hunter);
-            } else {
-                int endSimulation = reviewHunterEvidence(hunter);
-                if (endSimulation == C_TRUE) {
-                    printf("Hunter %s collected enough evidence and exits\n", hunter->name);
-                    sem_post(&hunter->room->Mutex);
-                    l_hunterExit(hunter->name, LOG_EVIDENCE);
-                    pthread_exit(NULL);
-                }
+           
+            // Actions based on the presence of a ghost
+            switch (action) {
+                case 0:
+                    hunterCollect(hunter, hunter->room); // Attempt to collect evidence
+                    break;
+                case 1:
+                    moveHunter(hunter); // Move to another room
+                    break;
+                case 2:
+                    // Review evidence and possibly exit if enough evidence is collected
+                    if (reviewHunterEvidence(hunter) == C_TRUE) {
+                        printf("Hunter %s collected enough evidence and exits\n", hunter->name);
+                        sem_post(&hunter->room->Mutex); // Unlock before exiting
+                        l_hunterExit(hunter->name, LOG_EVIDENCE);
+                        pthread_exit(NULL); // Exit the thread
+                    }
+                    break;
             }
         } else {
-            hunter->boredemTimer++;
+            // If no ghost is present
+            hunter->boredemTimer++; // Increment boredom timer
             printf("Hunter %s boredom incremented: %d\n", hunter->name, hunter->boredemTimer);
 
+            // Randomly choose an action
             int action = randInt(0, 3);
             printf("Hunter %s chose action %d without ghost present\n", hunter->name, action);
 
-            if (action == 0) {
-                hunterCollect(hunter, hunter->room);
-            } else if (action == 1) {
-                moveHunter(hunter);
-            } else {
-                int endSimulation = reviewHunterEvidence(hunter);
-                if (endSimulation == C_TRUE) {
-                    printf("Hunter %s collected enough evidence and exits\n", hunter->name);
-                    sem_post(&hunter->room->Mutex);
-                    l_hunterExit(hunter->name, LOG_EVIDENCE);
-                    pthread_exit(NULL);
-                }
+            switch (action) {
+                case 0:
+                    hunterCollect(hunter, hunter->room); // Attempt to collect evidence
+                    break;
+                case 1:
+                    moveHunter(hunter); // Move to another room
+                    break;
+                case 2:
+                    // Review evidence and possibly exit if enough evidence is collected
+                    if (reviewHunterEvidence(hunter) == C_TRUE) {
+                        printf("Hunter %s collected enough evidence and exits\n", hunter->name);
+                        sem_post(&hunter->room->Mutex); // Unlock before exiting
+                        l_hunterExit(hunter->name, LOG_EVIDENCE);
+                        pthread_exit(NULL); // Exit the thread
+                    }
+                    break;
             }
         }
 
+        // Check for exit conditions based on fear or boredom
         if (hunter->fear >= FEAR_MAX) {
             printf("Hunter %s exits due to fear\n", hunter->name);
             l_hunterExit(hunter->name, LOG_FEAR);
-            sem_post(&hunter->room->Mutex);
-            pthread_exit(NULL);
+            sem_post(&hunter->room->Mutex); // Unlock before exiting
+            pthread_exit(NULL); // Exit the thread
         } else if (hunter->boredemTimer >= BOREDOM_MAX) {
             printf("Hunter %s exits due to boredom\n", hunter->name);
             l_hunterExit(hunter->name, LOG_BORED);
-            sem_post(&hunter->room->Mutex);
-            pthread_exit(NULL);
+            sem_post(&hunter->room->Mutex); // Unlock before exiting
+            pthread_exit(NULL); // Exit the thread
         }
-        sem_post(&hunter->room->Mutex);
+
+        sem_post(&hunter->room->Mutex); // Unlock the room mutex after finishing the logic
     }
 
     printf("Hunter %s exiting thread naturally\n", hunter->name);
-    pthread_exit(NULL);
+    pthread_exit(NULL); // Exit the thread
 }

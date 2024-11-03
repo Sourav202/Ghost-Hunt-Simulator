@@ -5,10 +5,11 @@ Purpose - Initialize ghost
 out - h (HouseType)  
 in/out - ghost (GhostType) 
 */
-void initGhost(HouseType *h, GhostType *ghost){
+void initGhost(HouseType *h, GhostType *ghost) {
     ghost->ghostType = randomGhost();
-    //init ghost's evidence based on ghostClass
-    switch(ghost->ghostType) {
+   
+    // Initialize ghost's evidence based on ghostClass
+    switch (ghost->ghostType) {
         case BANSHEE:
             ghost->evidence[0] = EMF;
             ghost->evidence[1] = TEMPERATURE;
@@ -33,20 +34,25 @@ void initGhost(HouseType *h, GhostType *ghost){
             ghost->evidence[0] = EV_UNKNOWN;
             break;
     }
-    //randomly place it in a room (that is NOT Van room)
+
+    // Randomly place the ghost in a room (that is NOT the Van room)
     int randRoom = randInt(0, NUM_OF_ROOMS - 1);
-    RNodeType *currNode = h->rooms.head->nextNode;
-    while (1) {
+    RNodeType *currNode = h->rooms.head;
+   
+    while (currNode != NULL) {
         if (randRoom == 0) {
-            break;
+            ghost->room = currNode->currRoomObj; // Assign ghost to the room
+            currNode->currRoomObj->ghost = ghost; // Set the ghost in the room
+            printf("Ghost assigned to room: %s\n", ghost->room->name); // Debug print
+            break; // Exit the loop after assigning the ghost
         }
         randRoom--;
-        currNode = currNode->nextNode;
+        currNode = currNode->nextNode; // Move to the next room
     }
-    ghost->room = currNode->currRoomObj;
-    ghost->boredemTimer = 0;
-    ghost->house = h;
-    l_ghostInit(ghost->ghostType, ghost->room->name);
+
+    ghost->boredemTimer = 0; // Initialize the boredom timer
+    ghost->house = h; // Link the ghost to the house
+    l_ghostInit(ghost->ghostType, ghost->room->name); // Log the ghost initialization
 }
 
 /*
@@ -68,11 +74,17 @@ out - room (RoomType)
 return -  int C_TRUE/C_FALSE
 */
 int ghostPresent(RoomType *room) {
-    //checks ghost room
-    if (room->ghost == NULL) {
-        return C_FALSE;
+    // Check if the room is NULL and if the ghost is NULL
+    if (room == NULL) {
+        printf("Room is NULL\n");
+        return C_FALSE; // Indicate no ghost
+    }
+
+    // Check for the ghost's presence
+    if (room->ghost != NULL) {
+        return C_TRUE; // Ghost is present
     } else {
-        return C_TRUE;
+        return C_FALSE; // No ghost in the room
     }
 }
 
