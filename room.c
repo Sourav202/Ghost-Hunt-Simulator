@@ -35,8 +35,6 @@ RoomType* createRoom(char *name) {
     room->hunters->head = NULL;
     room->hunters->tail = NULL;
 
-    //init semaphore
-    sem_init(&room->Mutex, 0, 1);
     return room;
 }
 
@@ -125,8 +123,6 @@ void cleanupRoomData(RoomType *room) {
         cleanupRoomList(room->rooms);
         free(room->rooms);
     }
-    //destroy mutex
-    sem_destroy(&room->Mutex);
     free(room);
 }
 

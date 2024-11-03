@@ -57,6 +57,7 @@ int main() {
     */
 
     // Print room connections, list, hunters, and ghost for testing purposes
+    
     RNodeType *currNode = house.rooms.head;
     while (currNode != NULL) {
         RoomType *currRoom = currNode->currRoomObj;
